@@ -22,6 +22,9 @@ export class HeroDetailComponent implements OnInit {
       .getHero(id)
       .subscribe((hero: Hero | undefined) => (this.hero = hero));
   }
+  goBack(): void {
+    this.location.back();
+  }
 
   @Input() hero?: Hero;
 }
