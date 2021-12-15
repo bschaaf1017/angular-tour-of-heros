@@ -3,20 +3,56 @@ import { Observable, of } from 'rxjs';
 import { Hero } from './hero';
 import { HEROES } from './mock-heroes';
 import { MessageService } from './message.service';
+import { HttpClient, HttpHeaders } from '@angular/common/http';
+import { catchError, map, tap } from 'rxjs';
 
 @Injectable({
   providedIn: 'root',
 })
 export class HeroService {
-  constructor(private message: MessageService) {}
+  private herosUrl = 'api/heroes';
+  httpOptions = {
+    headers: new HttpHeaders({ 'Content-Type': 'application/json' }),
+  };
+  constructor(private http: HttpClient, private message: MessageService) {}
+
   getHero(id: number): Observable<Hero> {
-    const hero = HEROES.find((hero) => hero.id === id)!;
-    this.message.add(`HeroService: fetched hero id=${id}`);
-    return of(hero);
+    const url = `${this.herosUrl}/${id}`;
+    return this.http.get<Hero>(url).pipe(
+      tap((_) => this.log(`fetched hero id=${id}`)),
+      catchError(this.handleError<Hero>(`getHero id=${id}`))
+    );
   }
+
   getHeroes(): Observable<Hero[]> {
-    const heroes = of(HEROES);
-    this.message.add('HeroService: fetched all heroes');
-    return heroes;
+    return this.http.get<Hero[]>(this.herosUrl).pipe(
+      tap((_) => this.log('fetched heroes')),
+      catchError(this.handleError<Hero[]>('getHeroes', []))
+    );
+  }
+
+  private log(message: string): void {
+    this.message.add(`HeroService: ${message}`);
+  }
+
+  private handleError<T>(operation = 'operation', result?: T) {
+    return (error: any): Observable<T> => {
+      console.error(error);
+      this.log(`${operation} failed: ${error.message}`);
+      return of(result as T);
+    };
+  }
+  updateHero(hero: Hero): Observable<any> {
+    return this.http.put(this.herosUrl, hero, this.httpOptions).pipe(
+      tap((_) => this.log(`updated hero id=${hero.id}`)),
+      catchError(this.handleError<any>('updateHero'))
+    );
+  }
+
+  addHero(hero: Hero): Observable<Hero> {
+    return this.http.post<Hero>(this.herosUrl, hero, this.httpOptions).pipe(
+      tap((newHero: Hero) => this.log(`added hero w/ id=${newHero.id}`)),
+      catchError(this.handleError<Hero>('addHero'))
+    );
   }
 }
